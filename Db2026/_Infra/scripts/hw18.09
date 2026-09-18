@@ -1,0 +1,102 @@
+DROP TABLE IF EXISTS "пачки";
+DROP TABLE IF EXISTS "типы оборудования";
+DROP TABLE IF EXISTS "параметры";
+DROP TABLE IF EXISTS "пользователи";
+DROP TABLE IF EXISTS "должности";
+DROP TABLE IF EXISTS "Значение";
+
+
+CREATE TABLE "должности"
+(
+    code INTEGER PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE "пользователи"
+(
+    code INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    "должность_code" INTEGER,
+    FOREIGN KEY ("должность_code") REFERENCES "должности"(code)
+);
+
+CREATE TABLE "параметры"
+(
+    code INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    "значение" VARCHAR(100)
+);
+
+CREATE TABLE "типы оборудования"
+(
+    code INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    "параметр_code" INTEGER,
+    FOREIGN KEY ("параметр_code") REFERENCES "параметры"(code)
+);
+
+CREATE TABLE "пачки"
+(
+    code INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    "пользователь_code" INTEGER,
+    "тип_оборудования_code" INTEGER,
+    FOREIGN KEY ("пользователь_code") REFERENCES "пользователи"(code),
+    FOREIGN KEY ("тип_оборудования_code") REFERENCES "типы оборудования"(code)
+);
+
+
+INSERT INTO "должности" (code, name)
+VALUES
+    (1, 'Администратор'),
+    (2, 'Инженер'),
+    (3, 'Пользователь');
+
+
+INSERT INTO "пользователи" (code, name, "должность_code")
+VALUES
+    (1, 'Иван Иванов', 1),
+    (2, 'Петр Петров', 2),
+    (3, 'Анна Сидорова', 3);
+
+
+INSERT INTO "параметры" (code, name, "значение")
+VALUES
+    (1, 'Оперативная память', '16 GB'),
+    (2, 'Накопитель', '512 GB SSD'),
+    (3, 'Процессор', 'Intel Core i5');
+
+
+INSERT INTO "типы оборудования" (code, name, "параметр_code")
+VALUES
+    (1, 'Ноутбук', 1),
+    (2, 'Системный блок', 2),
+    (3, 'Рабочая станция', 3);
+
+
+INSERT INTO "пачки"
+    (code, name, "пользователь_code", "тип_оборудования_code")
+VALUES
+    (1, 'Пачка №1', 1, 1),
+    (2, 'Пачка №2', 2, 2),
+    (3, 'Пачка №3', 3, 3);
+
+
+SELECT
+    p.code AS "Код пачки",
+    p.name AS "Пачка",
+    u.code AS "Код пользователя",
+    u.name AS "Пользователь",
+    d.name AS "Должность",
+    e.name AS "Тип оборудования",
+    param.name AS "Параметр",
+    param."значение" AS "Значение"
+FROM "пачки" p
+JOIN "пользователи" u
+    ON p."пользователь_code" = u.code
+JOIN "должности" d
+    ON u."должность_code" = d.code
+JOIN "типы оборудования" e
+    ON p."тип_оборудования_code" = e.code
+JOIN "параметры" param
+    ON e."параметр_code" = param.code;
