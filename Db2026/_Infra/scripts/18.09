@@ -1,0 +1,48 @@
+
+create table solders
+(
+	name text,
+	rank text
+);
+create table ranks
+(
+	code int,
+	name text
+);
+insert into ranks(code, name) values(1, 'старший сержант')
+insert into ranks(code, name) values(2, 'младший сержант')
+insert into ranks(code, name) values(3, 'рядовой')
+
+select * from ranks
+
+-- dml
+select name || ' - ' || rank from solders
+select * from solders
+where 
+	rank_id is null
+update solders set rank_id = 1
+where 
+	rank like '%крутой%';
+	
+select * from solders, ranks
+where 
+	ranks.code = solders.rank_id
+
+alter table solders drop column rank
+
+
+alter table solders add rank_id int
+where 
+	-- rank = 'сержант'
+	rank like '%т%сержант%'
+	or
+	rank = 'старшина/сержант'
+	
+
+insert into solders(name, rank) values('иванов иван иванович', 'сержант');
+insert into solders(name, rank) values('иванов иван иванович', 'мл/сержант');
+insert into solders(name, rank) values('иванов иван иванович', 'лейтинант');
+insert into solders(name, rank) values('иванов иван иванович', 'ст/сержант');
+insert into solders(name, rank) values('иванов иван иванович', 'старший/сержант');
+insert into solders(name, rank) values('иванов иван иванович', 'старшина/сержант');
+insert into solders(name, rank) values('иванов иван иванович', 'старший сержант/крутой чел');
