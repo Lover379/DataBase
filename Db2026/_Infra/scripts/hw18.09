@@ -3,7 +3,6 @@ DROP TABLE IF EXISTS "типы оборудования";
 DROP TABLE IF EXISTS "параметры";
 DROP TABLE IF EXISTS "пользователи";
 DROP TABLE IF EXISTS "должности";
-DROP TABLE IF EXISTS "Значение";
 
 
 CREATE TABLE "должности"
@@ -11,6 +10,7 @@ CREATE TABLE "должности"
     code INTEGER PRIMARY KEY,
     name VARCHAR(100)
 );
+
 
 CREATE TABLE "пользователи"
 (
@@ -20,20 +20,24 @@ CREATE TABLE "пользователи"
     FOREIGN KEY ("должность_code") REFERENCES "должности"(code)
 );
 
+
 CREATE TABLE "параметры"
 (
     code INTEGER PRIMARY KEY,
-    name VARCHAR(100),
-    "значение" VARCHAR(100)
+    "высота_ДМК" INTEGER,
+    "температура" DECIMAL(4,1),
+    "давление" INTEGER,
+    "направление_ветра" INTEGER,
+    "скорость_ветра" INTEGER
 );
+
 
 CREATE TABLE "типы оборудования"
 (
     code INTEGER PRIMARY KEY,
-    name VARCHAR(100),
-    "параметр_code" INTEGER,
-    FOREIGN KEY ("параметр_code") REFERENCES "параметры"(code)
+    name VARCHAR(100)
 );
+
 
 CREATE TABLE "пачки"
 (
@@ -41,16 +45,24 @@ CREATE TABLE "пачки"
     name VARCHAR(100),
     "пользователь_code" INTEGER,
     "тип_оборудования_code" INTEGER,
-    FOREIGN KEY ("пользователь_code") REFERENCES "пользователи"(code),
-    FOREIGN KEY ("тип_оборудования_code") REFERENCES "типы оборудования"(code)
+    "параметр_code" INTEGER,
+
+    FOREIGN KEY ("пользователь_code")
+        REFERENCES "пользователи"(code),
+
+    FOREIGN KEY ("тип_оборудования_code")
+        REFERENCES "типы оборудования"(code),
+
+    FOREIGN KEY ("параметр_code")
+        REFERENCES "параметры"(code)
 );
 
 
 INSERT INTO "должности" (code, name)
 VALUES
-    (1, 'Администратор'),
-    (2, 'Инженер'),
-    (3, 'Пользователь');
+    (1, 'Командир'),
+    (2, 'Оператор'),
+    (3, 'Наблюдатель');
 
 
 INSERT INTO "пользователи" (code, name, "должность_code")
@@ -60,43 +72,61 @@ VALUES
     (3, 'Анна Сидорова', 3);
 
 
-INSERT INTO "параметры" (code, name, "значение")
+INSERT INTO "типы оборудования" (code, name)
 VALUES
-    (1, 'Оперативная память', '16 GB'),
-    (2, 'Накопитель', '512 GB SSD'),
-    (3, 'Процессор', 'Intel Core i5');
+    (1, 'ДМК'),
+    (2, 'ВР');
 
 
-INSERT INTO "типы оборудования" (code, name, "параметр_code")
+INSERT INTO "параметры"
+(
+    code,
+    "высота_ДМК",
+    "температура",
+    "давление",
+    "направление_ветра",
+    "скорость_ветра"
+)
 VALUES
-    (1, 'Ноутбук', 1),
-    (2, 'Системный блок', 2),
-    (3, 'Рабочая станция', 3);
+    (1, 100, 15.0, 750, 0, 0),
+    (2, 100, 25.0, 765, 15, 6),
+    (3, 100, 20.0, 760, 30, 4);
 
 
 INSERT INTO "пачки"
-    (code, name, "пользователь_code", "тип_оборудования_code")
+(
+    code,
+    name,
+    "пользователь_code",
+    "тип_оборудования_code",
+    "параметр_code"
+)
 VALUES
-    (1, 'Пачка №1', 1, 1),
-    (2, 'Пачка №2', 2, 2),
-    (3, 'Пачка №3', 3, 3);
-
+    (1, 'Пачка №1', 1, 1, 1),
+    (2, 'Пачка №2', 2, 1, 2),
+    (3, 'Пачка №3', 3, 2, 3);
 
 SELECT
-    p.code AS "Код пачки",
     p.name AS "Пачка",
-    u.code AS "Код пользователя",
     u.name AS "Пользователь",
     d.name AS "Должность",
     e.name AS "Тип оборудования",
-    param.name AS "Параметр",
-    param."значение" AS "Значение"
+    param."высота_ДМК" AS "Высота ДМК",
+    param."температура" AS "Температура",
+    param."давление" AS "Давление",
+    param."направление_ветра" AS "Направление ветра",
+    param."скорость_ветра" AS "Скорость ветра"
+
 FROM "пачки" p
+
 JOIN "пользователи" u
     ON p."пользователь_code" = u.code
+
 JOIN "должности" d
     ON u."должность_code" = d.code
+
 JOIN "типы оборудования" e
     ON p."тип_оборудования_code" = e.code
+
 JOIN "параметры" param
-    ON e."параметр_code" = param.code;
+    ON p."параметр_code" = param.code;
