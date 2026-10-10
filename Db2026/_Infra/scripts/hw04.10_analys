@@ -1,0 +1,86 @@
+-- 1. Каждый пользователь имеет одинаковое количество измерений
+
+SELECT
+    пз.name AS "Пользователь",
+    COUNT(п.code) AS "Количество измерений"
+FROM "пользователи" пз
+LEFT JOIN "пачки" п
+    ON п."пользователь_code" = пз.code
+GROUP BY пз.code, пз.name
+ORDER BY пз.code;
+
+
+-- 2. Нет пустых пачек измерений
+
+SELECT
+    п.code AS "Код пачки",
+    п.name AS "Пачка",
+    COUNT(па.code) AS "Количество параметров"
+FROM "пачки" п
+LEFT JOIN "параметры" па
+    ON па."пачка_code" = п.code
+GROUP BY п.code, п.name
+HAVING COUNT(па.code) = 0
+ORDER BY п.code;
+
+
+-- 3. Каждая пачка содержит ровно 5 параметров
+
+SELECT
+    п.code AS "Код пачки",
+    п.name AS "Пачка",
+    COUNT(па.code) AS "Количество параметров"
+FROM "пачки" п
+LEFT JOIN "параметры" па
+    ON па."пачка_code" = п.code
+GROUP BY п.code, п.name
+HAVING COUNT(па.code) <> 5
+ORDER BY п.code;
+
+
+-- 4. Все значения находятся в допустимых диапазонах
+
+SELECT
+    па.code AS "Код параметра",
+    тп.name AS "Параметр",
+    па.значение AS "Значение",
+    е.name AS "Единица измерения"
+FROM "параметры" па
+JOIN "Типы параметров" тп
+    ON па."тип_параметра_code" = тп.code
+JOIN "Единицы измерения" е
+    ON па."единица_измерения_code" = е.code
+WHERE
+    (тп.code = 1 AND (па.значение <= 0 OR па.значение <> CAST(па.значение AS INTEGER)))
+    OR
+    (тп.code = 2 AND (па.значение < -58 OR па.значение > 58))
+    OR
+    (тп.code = 3 AND (па.значение < 500 OR па.значение > 900))
+    OR
+    (тп.code = 4 AND (па.значение < 0 OR па.значение > 59))
+    OR
+    (тп.code = 5 AND (па.значение < 0 OR па.значение > 15))
+ORDER BY па.code;
+
+
+-- 5. Единицы измерения соответствуют параметрам
+SELECT
+    па.code AS "Код параметра",
+    тп.name AS "Параметр",
+    е.name AS "Единица измерения"
+FROM "параметры" па
+JOIN "Типы параметров" тп
+    ON па."тип_параметра_code" = тп.code
+JOIN "Единицы измерения" е
+    ON па."единица_измерения_code" = е.code
+WHERE
+    (тп.code = 1 AND е.name <> 'м')
+    OR
+    (тп.code = 2 AND е.name <> '°C')
+    OR
+    (тп.code = 3 AND е.name <> 'мм рт. ст.')
+    OR
+    (тп.code = 4 AND е.name <> 'деление угломера')
+    OR
+    (тп.code = 5 AND е.name <> 'м/с')
+ORDER BY па.code;
