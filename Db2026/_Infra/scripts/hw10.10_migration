@@ -1,0 +1,230 @@
+
+BEGIN;
+
+CREATE SCHEMA hw04;
+
+CREATE SEQUENCE hw04.seq_military_ranks;
+CREATE SEQUENCE hw04.seq_employees;
+CREATE SEQUENCE hw04.seq_measurement_types;
+CREATE SEQUENCE hw04.seq_measurement_batches;
+CREATE SEQUENCE hw04.seq_type_of_params;
+CREATE SEQUENCE hw04.seq_units_of_measurement;
+CREATE SEQUENCE hw04.seq_measurement_input_params;
+CREATE SEQUENCE hw04.seq_temperature_table1;
+
+CREATE TABLE hw04.military_ranks (
+    id INTEGER DEFAULT nextval('hw04.seq_military_ranks'),
+    description VARCHAR(100)
+);
+
+CREATE TABLE hw04.employees (
+    id INTEGER DEFAULT nextval('hw04.seq_employees'),
+    name VARCHAR(150),
+    birthday TIMESTAMP,
+    military_rank_id INTEGER
+);
+
+CREATE TABLE hw04.measurement_types (
+    id INTEGER DEFAULT nextval('hw04.seq_measurement_types'),
+    short_name VARCHAR(50),
+    description TEXT
+);
+
+CREATE TABLE hw04.measurement_batches (
+    id INTEGER DEFAULT nextval('hw04.seq_measurement_batches'),
+    employee_id INTEGER,
+    measurement_type_id INTEGER,
+    started TIMESTAMP
+);
+
+CREATE TABLE hw04.type_of_params (
+    id INTEGER DEFAULT nextval('hw04.seq_type_of_params'),
+    name VARCHAR(100)
+);
+
+CREATE TABLE hw04.units_of_measurement (
+    id INTEGER DEFAULT nextval('hw04.seq_units_of_measurement'),
+    name VARCHAR(50)
+);
+
+CREATE TABLE hw04.measurement_input_params (
+    id INTEGER DEFAULT nextval('hw04.seq_measurement_input_params'),
+    measurement_batch_id INTEGER,
+    id_type_of_params INTEGER,
+    id_units_of_measurement INTEGER,
+    param_value NUMERIC(10,2)
+);
+
+CREATE TABLE hw04.temperature_calculation_table1 (
+    id INTEGER DEFAULT nextval('hw04.seq_temperature_table1'),
+    t0_category VARCHAR(30),
+    delta_tv NUMERIC(4,1)
+);
+
+COMMIT;
+
+BEGIN;
+
+INSERT INTO hw04.military_ranks (description)
+VALUES
+    ('Рядовой'),
+    ('Сержант'),
+    ('Лейтенант');
+
+INSERT INTO hw04.employees (name, birthday, military_rank_id)
+VALUES
+    ('Иван Иванов', TIMESTAMP '1995-04-12 00:00:00', 1),
+    ('Петр Петров', TIMESTAMP '1990-08-23 00:00:00', 2),
+    ('Анна Сидорова', TIMESTAMP '1998-02-17 00:00:00', 3);
+
+INSERT INTO hw04.measurement_types (short_name, description)
+VALUES
+    ('Метео', 'Метеорологические измерения');
+
+INSERT INTO hw04.type_of_params (name)
+VALUES
+    ('Высота ДМК'),
+    ('Температура воздуха'),
+    ('Давление атмосферы'),
+    ('Направление ветра'),
+    ('Скорость ветра');
+
+INSERT INTO hw04.units_of_measurement (name)
+VALUES
+    ('м'),
+    ('°C'),
+    ('мм рт. ст.'),
+    ('деление угломера'),
+    ('м/с');
+
+INSERT INTO hw04.measurement_batches
+    (employee_id, measurement_type_id, started)
+VALUES
+    (1, 1, TIMESTAMP '2026-10-04 09:00:00'),
+    (2, 1, TIMESTAMP '2026-10-04 09:10:00'),
+    (3, 1, TIMESTAMP '2026-10-04 09:20:00');
+
+INSERT INTO hw04.measurement_input_params
+    (measurement_batch_id, id_type_of_params,
+     id_units_of_measurement, param_value)
+VALUES
+    (1, 1, 1, 100),
+    (1, 2, 2, 18),
+    (1, 3, 3, 760),
+    (1, 4, 4, 20),
+    (1, 5, 5, 5),
+    (2, 1, 1, 100),
+    (2, 2, 2, 22),
+    (2, 3, 3, 755),
+    (2, 4, 4, 35),
+    (2, 5, 5, 7),
+    (3, 1, 1, 100),
+    (3, 2, 2, 16),
+    (3, 3, 3, 745),
+    (3, 4, 4, 10),
+    (3, 5, 5, 3);
+
+INSERT INTO hw04.temperature_calculation_table1
+    (t0_category, delta_tv)
+VALUES
+    ('Ниже 0', 0),
+    ('0–5', 0.5),
+    ('10–15', 1),
+    ('20', 1.5),
+    ('25', 2),
+    ('30', 3.5),
+    ('40', 4.5);
+
+COMMIT;
+
+BEGIN;
+
+ALTER TABLE hw04.military_ranks
+    ADD CONSTRAINT pk_hw04_military_ranks PRIMARY KEY (id);
+
+ALTER TABLE hw04.employees
+    ADD CONSTRAINT pk_hw04_employees PRIMARY KEY (id);
+
+ALTER TABLE hw04.measurement_types
+    ADD CONSTRAINT pk_hw04_measurement_types PRIMARY KEY (id);
+
+ALTER TABLE hw04.measurement_batches
+    ADD CONSTRAINT pk_hw04_measurement_batches PRIMARY KEY (id);
+
+ALTER TABLE hw04.type_of_params
+    ADD CONSTRAINT pk_hw04_type_of_params PRIMARY KEY (id);
+
+ALTER TABLE hw04.units_of_measurement
+    ADD CONSTRAINT pk_hw04_units_of_measurement PRIMARY KEY (id);
+
+ALTER TABLE hw04.measurement_input_params
+    ADD CONSTRAINT pk_hw04_measurement_input_params PRIMARY KEY (id);
+
+ALTER TABLE hw04.temperature_calculation_table1
+    ADD CONSTRAINT pk_hw04_temperature_table1 PRIMARY KEY (id);
+
+ALTER TABLE hw04.military_ranks
+    ALTER COLUMN description SET NOT NULL;
+
+ALTER TABLE hw04.employees
+    ALTER COLUMN name SET NOT NULL;
+
+ALTER TABLE hw04.measurement_types
+    ALTER COLUMN short_name SET NOT NULL;
+
+ALTER TABLE hw04.measurement_batches
+    ALTER COLUMN employee_id SET NOT NULL,
+    ALTER COLUMN measurement_type_id SET NOT NULL,
+    ALTER COLUMN started SET NOT NULL;
+
+ALTER TABLE hw04.type_of_params
+    ALTER COLUMN name SET NOT NULL;
+
+ALTER TABLE hw04.units_of_measurement
+    ALTER COLUMN name SET NOT NULL;
+
+ALTER TABLE hw04.measurement_input_params
+    ALTER COLUMN measurement_batch_id SET NOT NULL,
+    ALTER COLUMN id_type_of_params SET NOT NULL,
+    ALTER COLUMN id_units_of_measurement SET NOT NULL,
+    ALTER COLUMN param_value SET NOT NULL;
+
+ALTER TABLE hw04.temperature_calculation_table1
+    ALTER COLUMN t0_category SET NOT NULL,
+    ALTER COLUMN delta_tv SET NOT NULL;
+
+ALTER TABLE hw04.employees
+    ADD CONSTRAINT fk_hw04_employee_rank
+    FOREIGN KEY (military_rank_id)
+    REFERENCES hw04.military_ranks(id);
+
+ALTER TABLE hw04.measurement_batches
+    ADD CONSTRAINT fk_hw04_batch_employee
+    FOREIGN KEY (employee_id)
+    REFERENCES hw04.employees(id);
+
+ALTER TABLE hw04.measurement_batches
+    ADD CONSTRAINT fk_hw04_batch_type
+    FOREIGN KEY (measurement_type_id)
+    REFERENCES hw04.measurement_types(id);
+
+ALTER TABLE hw04.measurement_input_params
+    ADD CONSTRAINT fk_hw04_param_batch
+    FOREIGN KEY (measurement_batch_id)
+    REFERENCES hw04.measurement_batches(id);
+
+ALTER TABLE hw04.measurement_input_params
+    ADD CONSTRAINT fk_hw04_param_type
+    FOREIGN KEY (id_type_of_params)
+    REFERENCES hw04.type_of_params(id);
+
+ALTER TABLE hw04.measurement_input_params
+    ADD CONSTRAINT fk_hw04_param_unit
+    FOREIGN KEY (id_units_of_measurement)
+    REFERENCES hw04.units_of_measurement(id);
+
+ALTER TABLE hw04.temperature_calculation_table1
+    ADD CONSTRAINT chk_hw04_delta_tv
+    CHECK (delta_tv >= 0);
+
+COMMIT;
