@@ -1,0 +1,143 @@
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'hw04'
+          AND t.typname = 'parameter_input'
+    ) THEN
+        CREATE TYPE hw04.parameter_input AS (
+            param_id INTEGER,
+            unit_id INTEGER,
+            param_value NUMERIC
+        );
+    END IF;
+END $$;
+
+
+-- Таблица допустимых значений параметров
+
+CREATE TABLE IF NOT EXISTS hw04.parameter_validation_rules (
+    param_id INTEGER PRIMARY KEY,
+    unit_id INTEGER NOT NULL,
+    min_value NUMERIC NOT NULL,
+    max_value NUMERIC NOT NULL
+);
+
+
+-- Диапазоны предварительные, их нужно сверить с заданием
+
+INSERT INTO hw04.parameter_validation_rules
+    (param_id, unit_id, min_value, max_value)
+VALUES
+    (1, 1, 0, 1000),
+    (2, 2, -80, 60),
+    (3, 3, 500, 800),
+    (4, 4, 0, 6000),
+    (5, 5, 0, 100)
+ON CONFLICT (param_id) DO NOTHING;
+
+
+-- Функция проверки параметров
+
+CREATE OR REPLACE FUNCTION hw04.check_parameters(
+    p_params hw04.parameter_input[]
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    p hw04.parameter_input;
+    r RECORD;
+    v_errors TEXT := '';
+    v_count INTEGER;
+BEGIN
+    IF p_params IS NULL THEN
+        RETURN 'Список параметров не задан';
+    END IF;
+
+    -- Проверка повторяющихся параметров
+    IF EXISTS (
+        SELECT 1
+        FROM unnest(p_params) AS x
+        GROUP BY (x).param_id
+        HAVING COUNT(*) > 1
+    ) THEN
+        v_errors := v_errors || 'Повторяются параметры; ';
+    END IF;
+
+    -- Проверка каждого входного параметра
+    FOR p IN
+        SELECT (u).*
+        FROM unnest(p_params) AS u
+    LOOP
+        SELECT name
+        INTO r
+        FROM hw04.type_of_params
+        WHERE id = p.param_id;
+
+        IF NOT FOUND THEN
+            v_errors := v_errors ||
+                'Неизвестный параметр ID=' ||
+                COALESCE(p.param_id::TEXT, 'NULL') || '; ';
+            CONTINUE;
+        END IF;
+
+        IF p.param_value IS NULL THEN
+            v_errors := v_errors ||
+                r.name || ': значение не задано; ';
+            CONTINUE;
+        END IF;
+
+        SELECT *
+        INTO r
+        FROM hw04.parameter_validation_rules
+        WHERE param_id = p.param_id;
+
+        IF NOT FOUND THEN
+            v_errors := v_errors ||
+                'Нет правил проверки параметра ID=' ||
+                p.param_id || '; ';
+            CONTINUE;
+        END IF;
+
+        IF p.unit_id IS DISTINCT FROM r.unit_id THEN
+            v_errors := v_errors ||
+                'Неверная единица измерения параметра ID=' ||
+                p.param_id || '; ';
+        END IF;
+
+        IF p.param_value < r.min_value
+           OR p.param_value > r.max_value THEN
+            v_errors := v_errors ||
+                'Недопустимое значение параметра ID=' ||
+                p.param_id || '; ';
+        END IF;
+    END LOOP;
+
+    -- Проверка наличия всех пяти параметров
+    FOR r IN
+        SELECT id, name
+        FROM hw04.type_of_params
+        WHERE id BETWEEN 1 AND 5
+    LOOP
+        SELECT COUNT(*)
+        INTO v_count
+        FROM unnest(p_params) AS u
+        WHERE (u).param_id = r.id;
+
+        IF v_count = 0 THEN
+            v_errors := v_errors ||
+                'Отсутствует параметр: ' || r.name || '; ';
+        END IF;
+    END LOOP;
+
+    IF v_errors = '' THEN
+        RETURN 'Ошибок нет';
+    END IF;
+
+    RETURN v_errors;
+END;
+$$;
+
