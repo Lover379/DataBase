@@ -1,0 +1,138 @@
+
+
+DO $$
+BEGIN
+    BEGIN
+        EXECUTE '
+            CREATE TYPE public.interpolation_params AS (
+                x0 numeric(8,2),
+                y0 numeric(8,2),
+                x1 numeric(8,2),
+                y1 numeric(8,2)
+            )';
+    EXCEPTION
+        WHEN duplicate_object THEN
+            NULL;
+    END;
+
+    EXECUTE $ddl$
+        CREATE OR REPLACE FUNCTION public.get_interpolation_params(
+            p_temperature numeric
+        )
+        RETURNS public.interpolation_params
+        LANGUAGE plpgsql
+        AS $func$
+        DECLARE
+            p public.interpolation_params;
+        BEGIN
+            SELECT temperature, correction
+            INTO p.x0, p.y0
+            FROM public.calc_temperature_correction
+            WHERE temperature <= p_temperature
+            ORDER BY temperature DESC
+            LIMIT 1;
+
+            IF p.x0 IS NULL THEN
+                SELECT temperature, correction
+                INTO p.x0, p.y0
+                FROM public.calc_temperature_correction
+                ORDER BY temperature ASC
+                LIMIT 1;
+            END IF;
+
+            SELECT temperature, correction
+            INTO p.x1, p.y1
+            FROM public.calc_temperature_correction
+            WHERE temperature >= p_temperature
+            ORDER BY temperature ASC
+            LIMIT 1;
+
+            IF p.x1 IS NULL THEN
+                SELECT temperature, correction
+                INTO p.x1, p.y1
+                FROM public.calc_temperature_correction
+                ORDER BY temperature DESC
+                LIMIT 1;
+            END IF;
+
+            RETURN p;
+        END;
+        $func$;
+    $ddl$;
+
+    EXECUTE $ddl$
+        CREATE OR REPLACE FUNCTION public.calculate_interpolation(
+            p_x numeric,
+            p_params public.interpolation_params
+        )
+        RETURNS numeric
+        LANGUAGE plpgsql
+        AS $func$
+        BEGIN
+            IF p_params.x0 = p_params.x1 THEN
+                RETURN p_params.y0;
+            END IF;
+
+            RETURN p_params.y0
+                + (p_x - p_params.x0)
+                * (p_params.y1 - p_params.y0)
+                / (p_params.x1 - p_params.x0);
+        END;
+        $func$;
+    $ddl$;
+
+    RAISE NOTICE 'Тип и функции созданы';
+END;
+$$;
+
+
+
+DO $$
+DECLARE
+    p public.interpolation_params;
+    y numeric;
+BEGIN
+    p := public.get_interpolation_params(26);
+    y := public.calculate_interpolation(26, p);
+
+    RAISE NOTICE '26 градусов: x0=%, y0=%, x1=%, y1=%, результат=%',
+        p.x0, p.y0, p.x1, p.y1, y;
+
+    IF p.x0 <> 25 OR p.y0 <> 2
+       OR p.x1 <> 30 OR p.y1 <> 3.5
+       OR ABS(y - 2.3) > 0.001 THEN
+        RAISE EXCEPTION 'Ошибка проверки температуры 26';
+    END IF;
+
+    p := public.get_interpolation_params(-5);
+    y := public.calculate_interpolation(-5, p);
+
+    RAISE NOTICE '-5 градусов: x0=%, y0=%, x1=%, y1=%, результат=%',
+        p.x0, p.y0, p.x1, p.y1, y;
+
+    IF y <> 0.5 THEN
+        RAISE EXCEPTION 'Ошибка проверки температуры -5';
+    END IF;
+
+    p := public.get_interpolation_params(45);
+    y := public.calculate_interpolation(45, p);
+
+    RAISE NOTICE '45 градусов: x0=%, y0=%, x1=%, y1=%, результат=%',
+        p.x0, p.y0, p.x1, p.y1, y;
+
+    IF y <> 4.5 THEN
+        RAISE EXCEPTION 'Ошибка проверки температуры 45';
+    END IF;
+
+    p := public.get_interpolation_params(10);
+    y := public.calculate_interpolation(10, p);
+
+    RAISE NOTICE '10 градусов: результат=%', y;
+
+    IF y <> 1 THEN
+        RAISE EXCEPTION 'Ошибка проверки температуры 10';
+    END IF;
+
+    RAISE NOTICE 'Все проверки успешно пройдены!';
+END;
+$$;
