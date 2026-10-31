@@ -1,0 +1,38 @@
+
+-- Получение температурной поправки
+CREATE OR REPLACE FUNCTION hw04.get_temperature_correction(
+    p_temperature NUMERIC
+)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_correction NUMERIC;
+BEGIN
+    SELECT delta_tv
+    INTO v_correction
+    FROM hw04.temperature_calculation_table1
+    WHERE
+        (t0_category = 'Ниже 0' AND p_temperature < 0)
+        OR (t0_category = '0–5' AND p_temperature >= 0 AND p_temperature <= 5)
+        OR (t0_category = '10–15' AND p_temperature >= 10 AND p_temperature <= 15)
+        OR (t0_category = '20' AND p_temperature = 20)
+        OR (t0_category = '25' AND p_temperature = 25)
+        OR (t0_category = '30' AND p_temperature = 30)
+        OR (t0_category = '40' AND p_temperature = 40);
+
+    RETURN v_correction;
+END;
+$$;
+
+-- Проверка температурной поправки
+SELECT hw04.get_temperature_correction(12);
+
+-- Получение параметров интерполяции
+SELECT public.get_interpolation_params(12);
+
+-- Расчет интерполяции
+SELECT public.calculate_interpolation(
+    12,
+    public.get_interpolation_params(12)
+);

@@ -1,0 +1,46 @@
+
+-- Таблица констант для метеорасчетов
+
+CREATE TABLE IF NOT EXISTS hw04.meteo_constants (
+    code VARCHAR(50) PRIMARY KEY,
+    value NUMERIC NOT NULL,
+    description TEXT
+);
+
+INSERT INTO hw04.meteo_constants (code, value, description)
+VALUES
+    ('MIN_HEIGHT', 200, 'Минимальная высота метеопоста, м'),
+    ('MAX_HEIGHT', 750, 'Максимальная высота метеопоста, м'),
+    ('MIN_TEMPERATURE', -58, 'Минимальная температура, °C'),
+    ('MAX_TEMPERATURE', 58, 'Максимальная температура, °C'),
+    ('MIN_PRESSURE', 500, 'Минимальное давление, мм рт. ст.'),
+    ('MAX_PRESSURE', 900, 'Максимальное давление, мм рт. ст.')
+ON CONFLICT (code) DO UPDATE
+SET value = EXCLUDED.value,
+    description = EXCLUDED.description;
+
+
+-- Функция получения константы по коду
+
+CREATE OR REPLACE FUNCTION hw04.get_meteo_constant(
+    p_code VARCHAR
+)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_value NUMERIC;
+BEGIN
+    SELECT value
+    INTO v_value
+    FROM hw04.meteo_constants
+    WHERE code = p_code;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Константа % не найдена', p_code;
+    END IF;
+
+    RETURN v_value;
+END;
+$$;
+

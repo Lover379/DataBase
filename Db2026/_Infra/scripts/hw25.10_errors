@@ -1,0 +1,58 @@
+
+-- Список параметров с ошибками
+
+WITH batch_params AS (
+    SELECT
+        b.id AS batch_id,
+        b.employee_id,
+        b.measurement_type_id,
+        b.started,
+        p.id_type_of_params AS param_id,
+        p.id_units_of_measurement AS unit_id,
+        p.param_value
+    FROM hw04.measurement_batches b
+    LEFT JOIN hw04.measurement_input_params p
+        ON p.measurement_batch_id = b.id
+),
+batch_errors AS (
+    SELECT
+        batch_id,
+        hw04.check_parameters(
+            array_agg(
+                ROW(param_id, unit_id, param_value)
+                ::hw04.parameter_input
+            ) FILTER (WHERE param_id IS NOT NULL)
+        ) AS error_description
+    FROM batch_params
+    GROUP BY batch_id
+),
+pivot_params AS (
+    SELECT
+        batch_id,
+        MAX(param_value) FILTER (WHERE param_id = 1) AS height,
+        MAX(param_value) FILTER (WHERE param_id = 2) AS temperature,
+        MAX(param_value) FILTER (WHERE param_id = 3) AS pressure,
+        MAX(param_value) FILTER (WHERE param_id = 4) AS wind_direction,
+        MAX(param_value) FILTER (WHERE param_id = 5) AS wind_speed
+    FROM batch_params
+    GROUP BY batch_id
+)
+SELECT
+    b.id AS "№",
+    mt.short_name AS "Тип оборудования",
+    pp.height AS "Высота метеопоста",
+    pp.temperature AS "Температура",
+    pp.pressure AS "Давление",
+    pp.wind_direction AS "Направление ветра",
+    pp.wind_speed AS "Скорость ветра",
+    NULL::NUMERIC AS "Дальность сноса пуль",
+    (be.error_description <> 'Ошибок нет') AS "Флаг: Есть ошибка",
+    be.error_description AS "Описание ошибки"
+FROM hw04.measurement_batches b
+JOIN hw04.measurement_types mt
+    ON mt.id = b.measurement_type_id
+LEFT JOIN pivot_params pp
+    ON pp.batch_id = b.id
+LEFT JOIN batch_errors be
+    ON be.batch_id = b.id
+ORDER BY b.id;

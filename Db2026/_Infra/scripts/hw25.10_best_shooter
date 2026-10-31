@@ -1,0 +1,66 @@
+
+-- Лучший стрелок
+
+WITH batch_params AS (
+    SELECT
+        b.id AS batch_id,
+        b.employee_id,
+        p.id_type_of_params AS param_id,
+        p.id_units_of_measurement AS unit_id,
+        p.param_value
+    FROM hw04.measurement_batches b
+    LEFT JOIN hw04.measurement_input_params p
+        ON p.measurement_batch_id = b.id
+),
+batch_errors AS (
+    SELECT
+        batch_id,
+        employee_id,
+        hw04.check_parameters(
+            array_agg(
+                ROW(param_id, unit_id, param_value)
+                ::hw04.parameter_input
+            ) FILTER (WHERE param_id IS NOT NULL)
+        ) AS error_description
+    FROM batch_params
+    GROUP BY batch_id, employee_id
+),
+employee_errors AS (
+    SELECT
+        e.id AS employee_id,
+        e.name AS employee_name,
+        mr.description AS military_rank,
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN be.error_description = 'Ошибок нет'
+                        THEN 0
+                    ELSE
+                        length(be.error_description)
+                        - length(replace(be.error_description, ';', ''))
+                END
+            ),
+            0
+        ) AS errors_count
+    FROM hw04.employees e
+    LEFT JOIN hw04.military_ranks mr
+        ON mr.id = e.military_rank_id
+    LEFT JOIN batch_errors be
+        ON be.employee_id = e.id
+    GROUP BY e.id, e.name, mr.description
+),
+ranked_employees AS (
+    SELECT
+        employee_name,
+        military_rank,
+        errors_count,
+        RANK() OVER (ORDER BY errors_count ASC) AS shooter_rank
+    FROM employee_errors
+)
+SELECT
+    shooter_rank AS "Место",
+    employee_name AS "Пользователь",
+    military_rank AS "Звание",
+    errors_count AS "Количество ошибок"
+FROM ranked_employees
+ORDER BY shooter_rank, employee_name;
